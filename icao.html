@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Airport Information</title>
+<style>
+  body {
+    background-color: #1f1f1f; /* Dark background color */
+    color: #ffffff; /* Light text color */
+    font-family: Arial, sans-serif; /* Choose a suitable font */
+    text-align: center; /* Center align content */
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    color: #ffffff; /* Light text color for table */
+  }
+  th, td {
+    border: 1px solid #444; /* Darker border color */
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background-color: #333; /* Darker background color for table header */
+  }
+  .flag {
+    width: 40px;
+    height: 20px;
+    cursor: pointer;
+  }
+  .collapsible {
+    background-color: #333; /* Darker background color for collapsible buttons */
+    color: #ffffff; /* Light text color for collapsible buttons */
+    cursor: pointer;
+    padding: 18px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+  }
+  .active, .collapsible:hover {
+    background-color: #555; /* Slightly lighter background color when active or hovered */
+  }
+  .content {
+    padding: 0 18px;
+    display: none;
+    overflow: hidden;
+    background-color: #444; /* Dark background color for content */
+  }
+  .icao-button {
+    background-color: #444;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<h2>Enter ICAO Code</h2>
+<input type="text" id="icaoInput">
+<button onclick="fetchAirportData()">Enter</button>
+
+<div id="airportInfo"></div>
+
+<script>
+  function fetchAirportData() {
+    const icaoCode = document.getElementById('icaoInput').value.toUpperCase();
+    fetch(`https://airportdb.io/api/v1/airport/${icaoCode}?apiToken=15b21be09cdbfaea4c56312bb2f93f62ad840307a7b15b6d7fd3f87188ddd99442bec3c79cc0b57620c445f99f5c4c3e`)
+      .then(response => response.json())
+      .then(data => displayAirportInfo(data))
+      .catch(error => console.error('Error fetching data:', error));
+  }
+
+  function displayAirportInfo(data) {
+    const airportInfoDiv = document.getElementById('airportInfo');
+    airportInfoDiv.innerHTML = `
+      <button class="collapsible">Main Information</button>
+      <div class="content">
+        <table>
+          <tr>
+            <th>Property</th>
+            <th>Value</th>
+          </tr>
+          <tr>
+            <td>ICAO Code</td>
+            <td>${data.ident}${data.iata_code ? ' - ' + data.iata_code : ''}</td>
+          </tr>
+          <tr>
+            <td>Airport Type</td>
+            <td>${formatAirportType(data.type)}</td>
+          </tr>
+          <tr>
+            <td>Name</td>
+            <td>${data.name}</td>
+          </tr>
+          <tr>
+            <td>Latitude</td>
+            <td>${data.latitude_deg}</td>
+          </tr>
+          <tr>
+            <td>Longitude</td>
+            <td>${data.longitude_deg}</td>
+          </tr>
+          <tr>
+            <td>Elevation (ft)</td>
+            <td>${data.elevation_ft}</td>
+          </tr>
+          <tr>
+            <td>Scheduled Service</td>
+            <td>${data.scheduled_service.toUpperCase()}</td>
+          </tr>
+          <tr>
+            <td>Continent</td>
+            <td>${data.continent}</td>
+          </tr>
+          <tr>
+            <td>Flag</td>
+            <td><img src="https://flagcdn.com/w40/${data.country.code.toLowerCase()}.png" class="flag" onclick="toggleRegion('${data.region.code.toLowerCase()}', '${data.country.code.toLowerCase()}')" /></td>
+          </tr>
+          <tr>
+            <td>Municipality</td>
+            <td>${data.municipality}</td>
+          </tr>
+          <tr>
+            <td>Region</td>
+            <td>${data.region.name}</td>
+          </tr>
+          <tr>
+            <td>Home Link</td>
+            <td><a href="${data.home_link}" target="_blank">${data.home_link}</a></td>
+          </tr>
+          <tr>
+            <td>Wikipedia Link</td>
+            <td><a href="${data.wikipedia_link}" target="_blank">${data.wikipedia_link}</a></td>
+          </tr>
+        </table>
+      </div>`;
+
+    if (data.runways) {
+      airportInfoDiv.innerHTML += `
+        <button class="collapsible">Runways</button>
+        <div class="content">
+          <table>
+            <tr>
+              <th>Runway</th>
+              <th>Length (ft)</th>
+              <th>Width (ft)</th>
+              <th>Surface</th>
+              <th>Heading (T)</th>
+              <th>Lighted</th>
+            </tr>
+            ${data.runways.map(runway => `
+              <tr>
+                <td>${runway.le_ident}/${runway.he_ident}</td>
+                <td>${runway.length_ft}</td>
+                <td>${runway.width_ft}</td>
+                <td>${runway.surface}</td>
+                <td>${runway.le_heading_degT}</td>
+                <td>${runway.lighted ? 'Yes' : 'No'}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>`;
+    }
+
+    if (data.freqs) {
+      airportInfoDiv.innerHTML += `
+        <button class="collapsible">Frequencies</button>
+        <div class="content">
+          <table>
+            <tr>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Frequency (MHz)</th>
+            </tr>
+            ${data.freqs.map(freq => `
+              <tr>
+                <td>${freq.type}</td>
+                <td>${freq.description}</td>
+                <td>${freq.frequency_mhz}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>`;
+    }
+
+    if (data.navaids) {
+      airportInfoDiv.innerHTML += `
+        <button class="collapsible">Navaids</button>
+        <div class="content">
+          <table>
+            <tr>
+              <th>Ident</th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Frequency (kHz)</th>
+            </tr>
+            ${data.navaids.map(navaid => `
+              <tr>
+                <td>${navaid.ident}</td>
+                <td>${navaid.name}</td>
+                <td>${navaid.type}</td>
+                <td>${navaid.frequency_khz}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>`;
+    }
+
+    if (data.station) {
+      airportInfoDiv.innerHTML += `
+        <button class="collapsible">Station</button>
+        <div class="content">
+          <table>
+            <tr>
+              <th>ICAO Code</th>
+              <th>Distance (mi)</th>
+            </tr>
+            <tr>
+              <td><button class="icao-button" onclick="searchByICAO('${data.station.icao_code}')">${data.station.icao_code}</button></td>
+              <td>${data.station.distance}</td>
+            </tr>
+          </table>
+        </div>`;
+    }
+
+    if (data.home_link || data.wikipedia_link) {
+      airportInfoDiv.innerHTML += `
+        <button class="collapsible">Additional Resources</button>
+        <div class="content">
+          <table>
+            ${data.home_link ? `<tr><td><a href="${data.home_link}" target="_blank">Home</a></td></tr>` : ''}
+            ${data.wikipedia_link ? `<tr><td><a href="${data.wikipedia_link}" target="_blank">Wikipedia</a></td></tr>` : ''}
+          </table>
+        </div>`;
+    }
+
+    // Adding the map collapsible
+    airportInfoDiv.innerHTML += `
+        <button class="collapsible">Map</button>
+        <div class="content">
+          <img src="https://maps.geoapify.com/v1/staticmap?style=osm-bright-smooth&width=600&height=400&center=lonlat:${data.longitude_deg},${data.latitude_deg}&zoom=13.3497&apiKey=cc9ebd2837d34ddcbdcee2a9eddd9359" alt="Map" />
+        </div>`;
+
+    addCollapsibleFunctionality();
+  }
+
+  function addCollapsibleFunctionality() {
+    const coll = document.querySelectorAll('.collapsible');
+    for (let i = 0; i < coll.length; i++) {
+      coll[i].addEventListener('click', function() {
+        this.classList.toggle('active');
+        const content = this.nextElementSibling;
+        if (content.style.display === 'block') {
+          content.style.display = 'none';
+        } else {
+          content.style.display = 'block';
+        }
+      });
+    }
+  }
+
+  function toggleRegion(regionCode, countryCode) {
+    const flag = document.querySelector('.flag');
+    const currentSrc = flag.getAttribute('src');
+    if (currentSrc.includes(regionCode)) {
+      flag.setAttribute('src', `https://flagcdn.com/w40/${countryCode}.png`);
+    } else {
+      flag.setAttribute('src', `https://flagcdn.com/w40/${regionCode}.png`);
+    }
+  }
+
+  function formatAirportType(type) {
+    return type.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+  }
+
+  // Function to search by ICAO code
+  function searchByICAO(icaoCode) {
+    document.getElementById('icaoInput').value = icaoCode;
+    fetchAirportData();
+  }
+</script>
+</body>
+</html>
